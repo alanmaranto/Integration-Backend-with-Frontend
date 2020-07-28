@@ -7,12 +7,12 @@ import Login from '../containers/Login';
 import Register from '../containers/Register';
 import NotFount from '../containers/NotFount';
 
-const App = () => (
+const App = (props) => (
   <BrowserRouter>
     <Layout>
       <Switch>
-        <Route exact path="/" component={Home} />
-        <Route exact path="/player/:id" component={Player} />
+        <Route exact path="/" component={props.isLogged ? Home : Login} />
+        <Route exact path="/player/:id" component={props.isLogged ? Player : Login} />
         <Route exact path="/login" component={Login} />
         <Route exact path="/register" component={Register} />
         <Route component={NotFount} />
