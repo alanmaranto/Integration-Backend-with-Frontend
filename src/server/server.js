@@ -19,7 +19,6 @@ import Layout from "../frontend/components/Layout";
 import serverRoutes from "../frontend/routes/serverRoutes";
 import getManifest from "./getManifest";
 
-
 dotenv.config();
 
 const app = express();
@@ -78,22 +77,60 @@ const setResponse = (html, preloadedState, manifest) => {
       </html>`;
 };
 
-const renderApp = (req, res) => {
+const renderApp = async (req, res) => {
   let initialState;
-  const { email, name, id } = req.cookies;
+  const { email, name, id, token } = req.cookies;
 
-  if (id) {
+  try {
+    let movieList = await axios({
+      url: `${process.env.API_URL}/api/movies`,
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      method: "GET",
+    });
+    movieList = movieList.data.data;
+
+    let userMovieList = await axios({
+      url: `${process.env.API_URL}/api/user-movies/?userId=${id}`,
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    userMovieList = userMovieList.data.data;
+
     initialState = {
       user: {
         email,
         name,
         id,
       },
-      myList: [],
-      trends: [],
-      originals: [],
+      playing: {},
+      myList: movieList
+        .filter((movie) => {
+          return userMovieList.some(
+            (userMovie) => movie._id === userMovie.movieId
+          );
+        })
+        .map((movie) => {
+          const filteredMovie = userMovieList.find(
+            (userMovie) => movie._id === userMovie.movieId
+          );
+          if (filteredMovie) {
+            // aquí agrego el userMoviId que luego lo usaré para borrar favoritos
+            movie.userMovieId = filteredMovie._id;
+          }
+          return movie;
+        }),
+      trends: movieList.filter(
+        (movie) => movie.contentRating === "PG" && movie._id
+      ),
+      originals: movieList.filter(
+        (movie) => movie.contentRating === "G" && movie._id
+      ),
     };
-  } else {
+  } catch (err) {
     initialState = {
       user: {},
       myList: [],
@@ -161,6 +198,47 @@ app.post("/auth/sign-up", async function (req, res, next) {
       email: req.body.email,
       id: userData.id,
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/user-movies", async (req, res, next) => {
+  const { body: userMovie } = req;
+  const { id, token } = req.cookies;
+  try {
+    const response = await axios({
+      url: `${process.env.API_URL}/api/user-movies`,
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      data: {
+        userId: id,
+        movieId: userMovie.movieId,
+      },
+    });
+
+    res.status(200).json(response.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/user-movies/:userMovieId", async (req, res, next) => {
+  const { userMovieId } = req.params;
+  const { token } = req.cookies;
+
+  try {
+    const response = await axios({
+      url: `${process.env.API_URL}/api/user-movies/${userMovieId}`,
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    res.status(200).json(response.data);
   } catch (error) {
     next(error);
   }

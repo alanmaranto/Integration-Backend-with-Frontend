@@ -1,6 +1,6 @@
 import axios from "axios";
 
-export const setFavorite = (payload) => ({
+export const setFavoriteRequest = (payload) => ({
   type: "SET_FAVORITE",
   payload,
 });
@@ -20,7 +20,7 @@ export const registerRequest = (payload) => ({
   payload,
 });
 
-export const deteleFavorite = (payload) => ({
+export const deleteFavoriteRequest = (payload) => ({
   type: "DELETE_FAVORITE",
   payload,
 });
@@ -34,6 +34,51 @@ export const setError = (payload) => ({
   type: "SET_ERROR",
   payload,
 });
+
+export const deleteFavorite = (userMovieId) => {
+  return (dispatch) => {
+    axios({
+      url: `/user-movies/${userMovieId}`,
+      method: "DELETE",
+    })
+      .then(() => {
+        dispatch(deleteFavoriteRequest(userMovieId));
+      })
+      .catch((err) => dispatch(setError(err)));
+  };
+};
+
+export const setFavorite = ({
+  _id,
+  cover,
+  title,
+  year,
+  contentRating,
+  duration,
+}) => {
+  return (dispatch) => {
+    axios({
+      url: "./user-movies",
+      method: "POST",
+      data: {
+        movieId: _id,
+      },
+    })
+      .then(() => {
+        dispatch(
+          setFavoriteRequest({
+            _id,
+            cover,
+            title,
+            year,
+            contentRating,
+            duration,
+          })
+        );
+      })
+      .catch((err) => dispatch(setError(err)));
+  };
+};
 
 export const registerUser = (payload, redirectUrl) => {
   return (dispatch) => {
@@ -61,7 +106,6 @@ export const loginUser = ({ email, password }, redirectUrl) => {
         document.cookie = `email=${data.user.email}`;
         document.cookie = `name=${data.user.name}`;
         document.cookie = `id=${data.user.id}`;
-        document.cookie = `token=${data.user.token}`;
         dispatch(loginRequest(data.user));
       })
       .then(() => {
